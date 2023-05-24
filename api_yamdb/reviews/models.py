@@ -52,6 +52,11 @@ class User(AbstractUser):
 
 
 class Category(models.Model):
+    """
+    Модель категории произведения.
+    Используется в модели Произведения.
+    описаны 2 поля: название категории и уникальный слаг для адресной строки
+    """
     name = models.CharField(max_length=256, verbose_name='Категория')
     slug = models.SlugField(max_length=50, unique=True, verbose_name='Ссылка')
 
@@ -64,6 +69,11 @@ class Category(models.Model):
 
 
 class Genre(models.Model):
+    """
+    Модель жанра произведения.
+    Используется в модели Произведения.
+    описаны 2 поля: название категории и уникальный слаг для адресной строки
+    """
     name = models.CharField(max_length=256, verbose_name='Жанр')
     slug = models.SlugField(max_length=50, unique=True, verbose_name='Ссылка')
 
@@ -76,21 +86,35 @@ class Genre(models.Model):
 
 
 class Title(models.Model):
-    name = models.CharField(max_length=256, verbose_name='Произведение')
-    year = models.PositiveIntegerField(validators=[MaxValueValidator(now)])
-    description = models.CharField(blank=True, max_length=2000)
+    """
+    Модель произведения.
+    Содержит данные о названии произведения и годе публикации.
+    Опциональные поля: описание, категория и жанр.
+    Категория у произведения может быть только одна, а жанров несколько.
+    """
+    name = models.CharField(
+        max_length=256,
+        verbose_name='Название произведения',
+    )
+    year = models.PositiveIntegerField(
+        validators=[MaxValueValidator(now().year)],
+        verbose_name='Год издания',
+    )
+    description = models.TextField(blank=True, verbose_name='Описание')
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
         related_name='titles',
+        verbose_name='Категория'
     )
     genre = models.ManyToManyField(
         Genre,
         through='TitleGenres',
         through_fields=('title', 'genre'),
         related_name='titles',
+        verbose_name='Жанр',
     )
 
     def __str__(self):
@@ -103,8 +127,17 @@ class Title(models.Model):
 
 
 class TitleGenres(models.Model):
+    """Модель для связи многие ко многим Произведения-Жанры."""
     title = models.ForeignKey(Title, on_delete=models.CASCADE)
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['title', 'genre'],
+                name='unique_title_genre'
+            ),
+        ]
 
     def __str__(self):
         return f'{self.title.__str__()}_{self.genre.__str__()}'
