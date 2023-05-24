@@ -134,8 +134,8 @@ class TitleGenres(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=['user', 'author'],
-                name='unique_following_follower'
+                fields=['title', 'genre'],
+                name='unique_title_genre'
             ),
         ]
 
