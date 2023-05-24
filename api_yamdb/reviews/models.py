@@ -1,9 +1,11 @@
 from django.contrib.auth.models import AbstractUser
-from django.core.validators import MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from django.db import models
 from django.utils.timezone import now
 
+
+OUTPUT_LENGTH = 30
 
 ROLE_CHOICES = (
     ('user', 'Пользователь'),
@@ -141,3 +143,63 @@ class TitleGenres(models.Model):
 
     def __str__(self):
         return f'{self.title.__str__()}_{self.genre.__str__()}'
+
+
+class ReviewCommentModel(models.Model):
+    text = models.TextField("Текст")
+    author = models.ForeignKey(
+        User,
+        verbose_name="Автор",
+        on_delete=models.CASCADE,
+    )
+    pub_date = models.DateTimeField(
+        "Дата добавления",
+        auto_now_add=True,
+        db_index=True,
+    )
+
+    class Meta:
+        abstract = True
+        ordering = ("-pub_date",)
+
+    def __str__(self):
+        return self.text[OUTPUT_LENGTH]
+
+
+class Review(ReviewCommentModel):
+    title = models.ForeignKey(
+        Title, verbose_name="Произведение", on_delete=models.CASCADE
+    )
+    score = models.SmallIntegerField(
+        "Оценка произведения",
+        validators=[
+            MinValueValidator(
+                1, message="Оценка должна быть больше или равна 1"
+            ),
+            MaxValueValidator(
+                10, message="Оценка должна быть меньше или равна 10"
+            ),
+        ],
+        default=1,
+    )
+
+    class Meta(ReviewCommentModel.Meta):
+        verbose_name = "Отзыв"
+        verbose_name_plural = "Отзывы"
+        default_related_name = "reviews"
+        constraints = [
+            models.UniqueConstraint(
+                fields=("title", "author"), name="unique_review"
+            ),
+        ]
+
+
+class Comment(ReviewCommentModel):
+    review = models.ForeignKey(
+        Review, verbose_name="Отзыв", on_delete=models.CASCADE
+    )
+
+    class Meta(ReviewCommentModel.Meta):
+        verbose_name = "Комментарий"
+        verbose_name_plural = "Комментарии"
+        default_related_name = "comments"
