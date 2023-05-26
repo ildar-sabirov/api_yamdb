@@ -59,8 +59,16 @@ class Category(models.Model):
     Используется в модели Произведения.
     описаны 2 поля: название категории и уникальный слаг для адресной строки
     """
-    name = models.CharField(max_length=256, verbose_name='Категория')
-    slug = models.SlugField(max_length=50, unique=True, verbose_name='Ссылка')
+    name = models.CharField(
+        max_length=256,
+        verbose_name='Категория',
+        db_index=True
+    )
+    slug = models.SlugField(
+        max_length=50,
+        unique=True,
+        verbose_name='Ссылка'
+    )
 
     def __str__(self):
         return self.slug
@@ -76,8 +84,16 @@ class Genre(models.Model):
     Используется в модели Произведения.
     описаны 2 поля: название категории и уникальный слаг для адресной строки
     """
-    name = models.CharField(max_length=256, verbose_name='Жанр')
-    slug = models.SlugField(max_length=50, unique=True, verbose_name='Ссылка')
+    name = models.CharField(
+        max_length=256,
+        verbose_name='Жанр',
+        db_index=True
+    )
+    slug = models.SlugField(
+        max_length=50,
+        unique=True,
+        verbose_name='Ссылка'
+    )
 
     def __str__(self):
         return self.slug
@@ -99,7 +115,11 @@ class Title(models.Model):
         verbose_name='Название произведения',
     )
     year = models.PositiveIntegerField(
-        validators=[MaxValueValidator(now().year)],
+        validators=[
+            MaxValueValidator(
+                now().year, message='Год издания не может быть больше текущего'
+            )
+        ],
         verbose_name='Год издания',
     )
     description = models.TextField(blank=True, verbose_name='Описание')
