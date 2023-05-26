@@ -1,9 +1,11 @@
-from rest_framework import viewsets
-from rest_framework import permissions
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import permissions, viewsets
 from rest_framework.pagination import LimitOffsetPagination
 
-from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
 from reviews.models import Category, Genre, Title
+
+from .mixins import CreateListDestroyViewSet
+from .serializers import CategorySerializer, GenreSerializer, TitleSerializer
 
 
 class TitleViewSet(viewsets.ModelViewSet):
@@ -11,19 +13,15 @@ class TitleViewSet(viewsets.ModelViewSet):
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
     permission_classes = (permissions.AllowAny,)
+    filter_backends = (DjangoFilterBackend,)
+    filterset_fields = ('category', 'genre', 'name', 'year')
 
 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(CreateListDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.AllowAny,)
-    lookup_field = 'slug'
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(CreateListDestroyViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.AllowAny,)
-    lookup_field = 'slug'
