@@ -1,6 +1,15 @@
 from rest_framework import serializers
 
-from reviews.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title, User
+
+
+class SignupSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField(max_length=254)
+    username = serializers.RegexField(regex=r'^[\w.@+-]+$', max_length=150)
+
+    class Meta:
+        fields = ('email', 'username')
+        model = User
 
 
 class CategorySerializer(serializers.ModelSerializer):
