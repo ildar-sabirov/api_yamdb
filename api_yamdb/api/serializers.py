@@ -1,8 +1,14 @@
 from django.db.models import Avg
 from django.utils.timezone import now
 from rest_framework import serializers
+from rest_framework.generics import get_object_or_404
+from django.core.validators import MaxValueValidator, MinValueValidator
+from rest_framework.exceptions import ValidationError
+from rest_framework.fields import CurrentUserDefault
+from rest_framework.serializers import IntegerField
 
-from reviews.models import Category, Genre, Review, TitleGenres, Title, User
+from reviews.models import (Category, Genre, Review, TitleGenres,
+                            Title, User, Comment)
 
 
 class SignupSerializer(serializers.ModelSerializer):
@@ -114,3 +120,38 @@ class TitleSerializer(serializers.ModelSerializer):
                 'Год издания не может быть больше текущего'
             )
         return data
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(
+        default=CurrentUserDefault(),
+        slug_field="username", read_only=True
+    )
+    score = IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(10)]
+    )
+
+    def validate(self, data):
+        request = self.context["request"]
+        if request.method == "POST":
+            author = request.user
+            title_id = self.context["view"].kwargs.get("title_id")
+            title = get_object_or_404(Title, pk=title_id)
+            if Review.objects.filter(title=title, author=author).exists():
+                raise ValidationError("Нельзя добавить больше 1 комментария")
+        return data
+
+    class Meta:
+        fields = ("id", "text", "author", "score", "pub_date", "title")
+        model = Review
+        read_only_fields = ("title",)
+
+
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(read_only=True,
+                                          slug_field="username")
+
+    class Meta:
+        fields = ("id", "text", "author", "pub_date")
+        model = Comment
+        read_only_fields = ("review",)
