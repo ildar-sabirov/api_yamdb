@@ -1,5 +1,6 @@
-from rest_framework import filters, mixins, permissions, viewsets
-from rest_framework.pagination import LimitOffsetPagination
+from rest_framework import filters, mixins, viewsets
+
+from .permissions import IsAdminOrReadOnly
 
 
 class CreateListDestroyViewSet(
@@ -8,8 +9,7 @@ class CreateListDestroyViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet
 ):
-    pagination_class = LimitOffsetPagination
-    permission_classes = (permissions.AllowAny,)
+    permission_classes = (IsAdminOrReadOnly,)
     lookup_field = 'slug'
     filter_backends = (filters.SearchFilter,)
     search_fields = ('^name',)
