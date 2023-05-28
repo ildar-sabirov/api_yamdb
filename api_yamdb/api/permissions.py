@@ -30,6 +30,7 @@ class IsAdminOrReadOnly(BasePermission):
                     request.user.role == 'admin'
                     or request.user.is_superuser
                 )
+        return False
 
     def has_object_permission(self, request, view, obj):
         return (
