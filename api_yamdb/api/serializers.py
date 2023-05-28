@@ -68,12 +68,12 @@ class TitleSerializer(serializers.ModelSerializer):
         queryset=Category.objects.all(),
         slug_field='slug', write_only=True
     )
-    score = serializers.SerializerMethodField()
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
             'id', 'name', 'year', 'description',
-            'category', 'genre', 'score'
+            'category', 'genre', 'rating'
         )
         model = Title
 
@@ -102,15 +102,15 @@ class TitleSerializer(serializers.ModelSerializer):
         current_title_genres = []
         for genre_id in genres:
             current_genre = Genre.objects.get(pk=genre_id)
-            current_genre_serialized = CategorySerializer(current_genre).data
+            current_genre_serialized = GenreSerializer(current_genre).data
             current_title_genres.append(current_genre_serialized)
         response['genre'] = current_title_genres
         return response
 
-    def get_score(self, obj):
+    def get_rating(self, obj):
         review = Review.objects.filter(title=obj.pk)
         if review.exists():
-            return int(review.aggregate(Avg('score')))
+            return review.aggregate(Avg('score'))
         return None
 
     def validate_year(self, data):
