@@ -49,3 +49,9 @@ python3 manage.py migrate
 ```
 python3 manage.py runserver
 ```
+
+Для заполнения базы данных тестовыми данными:
+
+```
+python3 manage.py importcsv
+```
