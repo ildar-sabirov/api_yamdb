@@ -1,5 +1,4 @@
 from django.db.models import Avg
-from django.utils.timezone import now
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
 from django.core.validators import MaxValueValidator, MinValueValidator
@@ -37,10 +36,6 @@ class CategorySerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('name', 'slug')
         model = Category
-        lookup_field = 'slug'
-        extra_kwargs = {
-            'url': {'lookup_field': 'slug'}
-        }
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -49,14 +44,17 @@ class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ('name', 'slug')
         model = Genre
-        lookup_field = 'slug'
-        extra_kwargs = {
-            'url': {'lookup_field': 'slug'}
-        }
 
 
 class TitleSerializer(serializers.ModelSerializer):
-    """Сериализатор для модели Произведения."""
+    """Сериализатор для модели Произведения.
+    Добавляет возможность записи новых объектов мадели Произведения
+    с заданием полей категорий и жанров по слаг этих моделей.
+    Добавляет к модели расчетное поле рейтинг: среднее значение поля
+    'оценка произведения' модели Отзывов, связанных с выбранным произведением.
+    Настраивает отображение для методов GET объекта модели Произведения
+    с выводом имени и слага для категорий и жанров.
+    """
     genre = serializers.SlugRelatedField(
         queryset=Genre.objects.all(),
         slug_field='slug',
@@ -108,18 +106,10 @@ class TitleSerializer(serializers.ModelSerializer):
         return response
 
     def get_rating(self, obj):
-        review = Review.objects.filter(title=obj.pk)
-        if review.exists():
-            return review.aggregate(Avg('score'))
+        reviews = Review.objects.filter(title=obj.pk)
+        if reviews.exists():
+            return reviews.aggregate(Avg('score'))['score__avg']
         return None
-
-    def validate_year(self, data):
-        year = int(data)
-        if year > now().year:
-            raise serializers.ValidationError(
-                'Год издания не может быть больше текущего'
-            )
-        return data
 
 
 class ReviewSerializer(serializers.ModelSerializer):

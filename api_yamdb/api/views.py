@@ -1,24 +1,20 @@
+from api.permissions import IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import status, viewsets
 from rest_framework.decorators import api_view
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from api.permissions import IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
-from reviews.models import Category, Genre, Title, User, Review
+from reviews.models import Category, Genre, Review, Title, User
+from .filters import TitleFilter
 from .mixins import CreateListDestroyViewSet
-from .serializers import (
-    CategorySerializer,
-    GenreSerializer,
-    GetTokenSerializer,
-    SignupSerializer,
-    TitleSerializer,
-    ReviewSerializer,
-    CommentSerializer
-)
+from .serializers import (CategorySerializer, CommentSerializer,
+                          GenreSerializer, GetTokenSerializer,
+                          ReviewSerializer, SignupSerializer, TitleSerializer)
 
 
 @api_view(['POST'])
@@ -61,22 +57,42 @@ def get_token(request):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
+    """Просмотр произведений.
+    Доступны просмотр списка всех объектов без токена,
+    добавление, частичное изменение и удаление только для администратора
+    и суперюзера.
+    Настроена пагинация и фильтрация по полям: слаг категории, слаг жанра,
+    название произведения и год издания.
+    """
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
+    pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend,)
-    filterset_fields = ('category__slug', 'genre__slug', 'name', 'year')
+    filterset_class = TitleFilter
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
 
 class CategoryViewSet(CreateListDestroyViewSet):
+    """Просмотр категорий.
+    Доступны просмотр списка всех объектов без токена,
+    добавление и удаление только для администратора и суперюзера.
+    Настроена пагинация и поиск по полю название.
+    """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
+    lookup_field = 'slug'
 
 
 class GenreViewSet(CreateListDestroyViewSet):
+    """Просмотр жанров.
+    Доступны просмотр списка всех объектов без токена,
+    добавление и удаление только для администратора и суперюзера.
+    Настроена пагинация и поиск по полю название.
+    """
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
+    lookup_field = 'slug'
 
 
 class ReviewViewSet(viewsets.ModelViewSet):
