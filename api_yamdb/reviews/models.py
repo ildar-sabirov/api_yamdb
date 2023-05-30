@@ -5,6 +5,8 @@ from django.utils.timezone import now
 
 OUTPUT_LENGTH = 30
 
+WRONG_YEAR_MESSAGE = 'Год издания не может быть больше текущего'
+
 ROLE_CHOICES = (
     ('user', 'Пользователь'),
     ('moderator', 'Модератор'),
@@ -113,11 +115,7 @@ class Title(models.Model):
         verbose_name='Название произведения',
     )
     year = models.PositiveIntegerField(
-        validators=[
-            MaxValueValidator(
-                now().year, message='Год издания не может быть больше текущего'
-            )
-        ],
+        validators=[MaxValueValidator(now().year, message=WRONG_YEAR_MESSAGE)],
         verbose_name='Год издания',
     )
     description = models.TextField(blank=True, verbose_name='Описание')
