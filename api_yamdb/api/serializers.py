@@ -1,13 +1,19 @@
 from django.db.models import Avg
+from django.core.validators import MaxValueValidator, MinValueValidator
 from rest_framework import serializers
 from rest_framework.generics import get_object_or_404
-from django.core.validators import MaxValueValidator, MinValueValidator
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
 from rest_framework.serializers import IntegerField
 
 from reviews.models import (Category, Genre, Review, TitleGenres,
-                            Title, User, Comment)
+                            Title, User, Comment, ROLE_CHOICES)
+
+INVALID_USERNAME = 'Недопустимый username'
+USERNAME_IS_NOT_AVAILABLE = 'Пользователь с таким username уже существует'
+EMAIL_IS_NOT_AVAILABLE = 'Пользователь с таким email уже существует'
+GENRE_DOES_NOT_EXIST = 'Такого жанра не существует: {genre}.'
+CANNOT_ADD_MORE_THAN_ONE_COMMENT = 'Нельзя добавить больше одного комментария'
 
 
 class SignupSerializer(serializers.ModelSerializer):
@@ -19,14 +25,41 @@ class SignupSerializer(serializers.ModelSerializer):
         fields = ('email', 'username')
         model = User
 
+    def validate_username(self, username):
+        if username.lower() == 'me':
+            raise serializers.ValidationError(INVALID_USERNAME)
+        if User.objects.filter(username=username).exists():
+            raise serializers.ValidationError(
+                USERNAME_IS_NOT_AVAILABLE
+            )
+        return username
+
+    def validate_email(self, email):
+        if User.objects.filter(email=email).exists():
+            raise serializers.ValidationError(
+                EMAIL_IS_NOT_AVAILABLE
+            )
+        return email
+
 
 class GetTokenSerializer(serializers.ModelSerializer):
     """Сериализатор для получения JWT-токена."""
     username = serializers.RegexField(regex=r'^[\w.@+-]+$', max_length=150)
-    confirmation_token = serializers.CharField()
+    confirmation_code = serializers.CharField()
 
     class Meta:
-        fields = ('username', 'confirmation_token')
+        fields = ('username', 'confirmation_code')
+        model = User
+
+
+class UserSerializer(SignupSerializer):
+    """Сериализатор для работы с данными пользователей"""
+    role = serializers.ChoiceField(choices=ROLE_CHOICES, required=False)
+
+    class Meta:
+        fields = (
+            'username', 'email', 'first_name', 'last_name', 'bio', 'role'
+        )
         model = User
 
 
@@ -83,7 +116,7 @@ class TitleSerializer(serializers.ModelSerializer):
                 current_genre = Genre.objects.get(slug=genre)
             except Exception:
                 raise serializers.ValidationError(
-                    f'Такого жанра не существует: {genre}.'
+                    GENRE_DOES_NOT_EXIST.format(genre=genre)
                 )
             TitleGenres.objects.create(
                 genre=current_genre, title=title)
@@ -128,7 +161,7 @@ class ReviewSerializer(serializers.ModelSerializer):
             title_id = self.context["view"].kwargs.get("title_id")
             title = get_object_or_404(Title, pk=title_id)
             if Review.objects.filter(title=title, author=author).exists():
-                raise ValidationError("Нельзя добавить больше 1 комментария")
+                raise ValidationError(CANNOT_ADD_MORE_THAN_ONE_COMMENT)
         return data
 
     class Meta:

@@ -1,10 +1,10 @@
-from api.permissions import IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import status, viewsets
-from rest_framework.decorators import api_view
+from rest_framework.filters import SearchFilter
+from rest_framework import status, viewsets, permissions
+from rest_framework.decorators import api_view, action
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -14,46 +14,82 @@ from .filters import TitleFilter
 from .mixins import CreateListDestroyViewSet
 from .serializers import (CategorySerializer, CommentSerializer,
                           GenreSerializer, GetTokenSerializer,
-                          ReviewSerializer, SignupSerializer, TitleSerializer)
+                          ReviewSerializer, SignupSerializer, TitleSerializer,
+                          UserSerializer)
+from .permissions import IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly, IsAdmin
 
 
 @api_view(['POST'])
 def signup_view(request):
     """Регистрация пользователя и отправка кода подтверждения по почте."""
-    serializer = SignupSerializer(data=request.data)
-    if serializer.is_valid():
-        user = serializer.save()
-        confirmation_token = default_token_generator.make_token(user)
+    if not User.objects.filter(
+        username=request.data.get('username'), email=request.data.get('email')
+    ).exists():
+        serializer = SignupSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.data.get('username')
+        email = serializer.data.get('email')
+        user = User.objects.create(username=username, email=email)
+        confirmation_code = default_token_generator.make_token(user)
         send_mail(
-            'Confirmation token',
-            f'Код подтверждения для получения токена: {confirmation_token}',
+            'Confirmation code',
+            f'Код подтверждения для получения токена: {confirmation_code}',
             'from@example.com',
             [serializer.data.get('email')],
             fail_silently=False,
         )
         return Response(serializer.data, status=status.HTTP_200_OK)
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response(request.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
 def get_token(request):
     """Получение токена по имени пользователя и коду подтверждения."""
     serializer = GetTokenSerializer(data=request.data)
-    if serializer.is_valid():
-        username = serializer.validated_data.get('username')
-        confirmation_token = serializer.validated_data.get(
-            'confirmation_token'
-        )
-        user = get_object_or_404(User, username=username)
-        if not default_token_generator.check_token(user, confirmation_token):
-            return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST
-            )
+    serializer.is_valid(raise_exception=True)
+    username = serializer.validated_data.get('username')
+    confirmation_code = serializer.validated_data.get(
+        'confirmation_code'
+    )
+    user = get_object_or_404(User, username=username)
+    if not default_token_generator.check_token(user, confirmation_code):
         return Response(
-            {'token': str(RefreshToken.for_user(user).access_token)},
-            status=status.HTTP_200_OK
+            serializer.errors, status=status.HTTP_400_BAD_REQUEST
         )
-    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    return Response(
+        {'token': str(RefreshToken.for_user(user).access_token)},
+        status=status.HTTP_200_OK
+    )
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """Просмотр профилей пользователей.
+    Доступны просмотр списка всех объектов, и добавление, частичное изменение
+    и удаление только для администратора и суперюзера.
+    Для пользователя доступны просмотр своего профиля и частичное изменение.
+    """
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = (IsAdmin, permissions.IsAuthenticated)
+    lookup_field = 'username'
+    filter_backends = (SearchFilter, )
+    search_fields = ('username', )
+    http_method_names = ['get', 'post', 'head', 'patch', 'delete']
+
+    @action(
+        detail=False, methods=['get', 'patch'],
+        permission_classes=(permissions.IsAuthenticated,)
+    )
+    def me(self, request):
+        user = request.user
+        serializer = UserSerializer(request.user)
+        if request.method == 'PATCH':
+            serializer = UserSerializer(
+                request.user, data=request.data, partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save(role=user.role)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class TitleViewSet(viewsets.ModelViewSet):
