@@ -167,6 +167,7 @@ class TitleGenres(models.Model):
 
 
 class ReviewCommentModel(models.Model):
+    """Модель для задания общих настроек к моделям Отзыв и Комментарий."""
     text = models.TextField("Текст")
     author = models.ForeignKey(
         User,
@@ -188,6 +189,11 @@ class ReviewCommentModel(models.Model):
 
 
 class Review(ReviewCommentModel):
+    """Модель Отзыв.
+    Содержит данные о произведении, оценке, основной текс и автор отзыва,
+    дата публикации отзыва.
+    Настроена проверка значения оценки от 1 до 10.
+    """
     title = models.ForeignKey(
         Title, verbose_name="Произведение", on_delete=models.CASCADE
     )
@@ -216,6 +222,10 @@ class Review(ReviewCommentModel):
 
 
 class Comment(ReviewCommentModel):
+    """Модель Комментарий.
+    Содержит данные об отзыве на произведение, основной текс и автор комментария,
+    дата публикации комментария.
+    """
     review = models.ForeignKey(
         Review, verbose_name="Отзыв", on_delete=models.CASCADE
     )
