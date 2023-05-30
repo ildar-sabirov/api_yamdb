@@ -54,6 +54,7 @@ class User(AbstractUser):
     USERNAME_FIELD = 'username'
 
     class Meta:
+        ordering = ['username']
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
 
@@ -79,6 +80,7 @@ class Category(models.Model):
         return self.slug
 
     class Meta:
+        ordering = ['name']
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
@@ -104,6 +106,7 @@ class Genre(models.Model):
         return self.slug
 
     class Meta:
+        ordering = ['name']
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
