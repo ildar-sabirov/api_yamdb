@@ -223,8 +223,8 @@ class Review(ReviewCommentModel):
 
 class Comment(ReviewCommentModel):
     """Модель Комментарий.
-    Содержит данные об отзыве на произведение, основной текс и автор комментария,
-    дата публикации комментария.
+    Содержит данные об отзыве на произведение, основной текс и автор 
+    комментария, дата публикации комментария.
     """
     review = models.ForeignKey(
         Review, verbose_name="Отзыв", on_delete=models.CASCADE
