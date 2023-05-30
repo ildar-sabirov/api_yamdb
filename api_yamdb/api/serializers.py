@@ -1,13 +1,13 @@
-from django.db.models import Avg
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db.models import Avg
 from rest_framework import serializers
-from rest_framework.generics import get_object_or_404
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
+from rest_framework.generics import get_object_or_404
 from rest_framework.serializers import IntegerField
 
-from reviews.models import (Category, Genre, Review, TitleGenres,
-                            Title, User, Comment, ROLE_CHOICES)
+from reviews.models import (ROLE_CHOICES, Category, Comment, Genre, Review,
+                            Title, TitleGenres, User)
 
 INVALID_USERNAME = 'Недопустимый username'
 USERNAME_IS_NOT_AVAILABLE = 'Пользователь с таким username уже существует'
