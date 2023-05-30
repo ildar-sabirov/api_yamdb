@@ -15,33 +15,38 @@ ROLE_CHOICES = (
 class User(AbstractUser):
     """
     Модель пользователя платформы.
-    Используется в системе аутентификации Django.
     """
     username = models.CharField(
         max_length=150,
         unique=True,
-        blank=False
+        blank=False,
+        verbose_name='Имя пользователя',
     )
     email = models.EmailField(
         max_length=254,
         unique=True,
-        blank=False
+        blank=False,
+        verbose_name='Email',
     )
     first_name = models.CharField(
-        max_length=100,
-        blank=True
+        max_length=150,
+        blank=True,
+        verbose_name='Имя',
     )
     last_name = models.CharField(
-        max_length=100,
-        blank=True
+        max_length=150,
+        blank=True,
+        verbose_name='Фамилия',
     )
     bio = models.TextField(
-        blank=True
+        blank=True,
+        verbose_name='Биография'
     )
     role = models.CharField(
         max_length=15,
         choices=ROLE_CHOICES,
-        default='user'
+        default='user',
+        verbose_name='Роль'
     )
 
     USERNAME_FIELD = 'username'
