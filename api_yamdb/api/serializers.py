@@ -6,8 +6,9 @@ from rest_framework.fields import CurrentUserDefault
 from rest_framework.generics import get_object_or_404
 from rest_framework.serializers import IntegerField
 
-from reviews.models import (ROLE_CHOICES, Category, Comment, Genre, Review,
-                            Title, TitleGenres, User)
+from reviews.models import (
+    ROLE_CHOICES, Category, Comment, Genre, Review, Title, TitleGenres, User,
+)
 
 INVALID_USERNAME = 'Недопустимый username'
 USERNAME_IS_NOT_AVAILABLE = 'Пользователь с таким username уже существует'

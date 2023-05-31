@@ -2,21 +2,20 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from reviews.models import Category, Genre, Review, Title, User
 from .filters import TitleFilter
-from .mixins import CreateListDestroyViewSet
 from .permissions import IsAdmin, IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
-from .serializers import (CategorySerializer, CommentSerializer,
-                          GenreSerializer, GetTokenSerializer,
-                          ReviewSerializer, SignupSerializer, TitleSerializer,
-                          UserSerializer)
+from .serializers import (
+    CategorySerializer, CommentSerializer, GenreSerializer, GetTokenSerializer,
+    ReviewSerializer, SignupSerializer, TitleSerializer, UserSerializer,
+)
+from reviews.models import Category, Genre, Review, Title, User
 
 
 @api_view(['POST'])
@@ -92,6 +91,23 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class CategoryGenreViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet
+):
+    """Ограничение доступных методов для запросов http (GET, POST, DELETE).
+    Добавляет настройки доступа - для Администраторов или только на чтение,
+    а так же возможность поиска по полю 'имя'
+    """
+    permission_classes = (IsAdminOrReadOnly,)
+    pagination_class = PageNumberPagination
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+
+
 class TitleViewSet(viewsets.ModelViewSet):
     """Просмотр произведений.
     Доступны просмотр списка всех объектов без токена,
@@ -109,7 +125,7 @@ class TitleViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
 
-class CategoryViewSet(CreateListDestroyViewSet):
+class CategoryViewSet(CategoryGenreViewSet):
     """Просмотр категорий.
     Доступны просмотр списка всех объектов без токена,
     добавление и удаление только для администратора и суперюзера.
@@ -117,10 +133,9 @@ class CategoryViewSet(CreateListDestroyViewSet):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
 
 
-class GenreViewSet(CreateListDestroyViewSet):
+class GenreViewSet(CategoryGenreViewSet):
     """Просмотр жанров.
     Доступны просмотр списка всех объектов без токена,
     добавление и удаление только для администратора и суперюзера.
@@ -128,7 +143,6 @@ class GenreViewSet(CreateListDestroyViewSet):
     """
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    lookup_field = 'slug'
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

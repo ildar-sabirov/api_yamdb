@@ -5,6 +5,10 @@ from django.utils.timezone import now
 
 OUTPUT_LENGTH = 30
 
+NAME_LENGTH = 150
+
+SLUG_LENGTH = 50
+
 WRONG_YEAR_MESSAGE = 'Год издания не может быть больше текущего'
 
 ROLE_CHOICES = (
@@ -59,54 +63,47 @@ class User(AbstractUser):
         verbose_name_plural = "Пользователи"
 
 
-class Category(models.Model):
+class NameSlug(models.Model):
+    """Модель определения названия объекта и имени страницы.
+    Используется в моделях Жанр и Категория.
+    описаны 2 поля: название имя страницы. Настроена сортировка по имени."""
+    name = models.CharField(
+        max_length=NAME_LENGTH,
+        verbose_name='Название',
+        db_index=True
+    )
+    slug = models.SlugField(
+        max_length=SLUG_LENGTH,
+        unique=True,
+        verbose_name='Имя страницы'
+    )
+
+    def __str__(self):
+        return self.slug
+
+    class Meta:
+        abstract = True
+        ordering = ('name',)
+
+
+class Category(NameSlug):
     """
     Модель категории произведения.
     Используется в модели Произведения.
     описаны 2 поля: название категории и уникальный слаг для адресной строки
     """
-    name = models.CharField(
-        max_length=256,
-        verbose_name='Категория',
-        db_index=True
-    )
-    slug = models.SlugField(
-        max_length=50,
-        unique=True,
-        verbose_name='Ссылка'
-    )
-
-    def __str__(self):
-        return self.slug
-
-    class Meta:
-        ordering = ['name']
+    class Meta(NameSlug.Meta):
         verbose_name = 'Категория'
         verbose_name_plural = 'Категории'
 
 
-class Genre(models.Model):
+class Genre(NameSlug):
     """
     Модель жанра произведения.
     Используется в модели Произведения.
     описаны 2 поля: название категории и уникальный слаг для адресной строки
     """
-    name = models.CharField(
-        max_length=256,
-        verbose_name='Жанр',
-        db_index=True
-    )
-    slug = models.SlugField(
-        max_length=50,
-        unique=True,
-        verbose_name='Ссылка'
-    )
-
-    def __str__(self):
-        return self.slug
-
-    class Meta:
-        ordering = ['name']
+    class Meta(NameSlug.Meta):
         verbose_name = 'Жанр'
         verbose_name_plural = 'Жанры'
 
@@ -118,12 +115,18 @@ class Title(models.Model):
     Опциональные поля: описание, категория и жанр.
     Категория у произведения может быть только одна, а жанров несколько.
     """
+    def current_year():
+        return now().year
+
     name = models.CharField(
-        max_length=256,
-        verbose_name='Название произведения',
+        max_length=NAME_LENGTH,
+        verbose_name='Название',
     )
     year = models.PositiveIntegerField(
-        validators=[MaxValueValidator(now().year, message=WRONG_YEAR_MESSAGE)],
+        validators=[MaxValueValidator(
+            current_year(),
+            message=WRONG_YEAR_MESSAGE
+        )],
         verbose_name='Год издания',
     )
     description = models.TextField(blank=True, verbose_name='Описание')
@@ -146,8 +149,7 @@ class Title(models.Model):
     def __str__(self):
         return self.name
 
-    class Meta:
-        ordering = ['name']
+    class Meta(NameSlug.Meta):
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
 
@@ -166,7 +168,7 @@ class TitleGenres(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.title.__str__()}_{self.genre.__str__()}'
+        return f'{self.title}_{self.genre}'
 
 
 class ReviewCommentModel(models.Model):
