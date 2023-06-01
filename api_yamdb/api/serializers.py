@@ -1,5 +1,4 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db.models import Avg
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
@@ -7,7 +6,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.serializers import IntegerField
 
 from reviews.models import (
-    ROLE_CHOICES, Category, Comment, Genre, Review, Title, TitleGenres, User,
+    ROLE_CHOICES, Category, Comment, Genre, Review, Title, User,
 )
 
 INVALID_USERNAME = 'Недопустимый username'
@@ -80,7 +79,7 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
 
 
-class TitleSerializer(serializers.ModelSerializer):
+class TitlePostSerializer(serializers.ModelSerializer):
     """Сериализатор для модели Произведения.
     Добавляет возможность записи новых объектов мадели Произведения
     с заданием полей категорий и жанров по слаг этих моделей.
@@ -100,50 +99,34 @@ class TitleSerializer(serializers.ModelSerializer):
         queryset=Category.objects.all(),
         slug_field='slug', write_only=True
     )
-    rating = serializers.SerializerMethodField()
 
     class Meta:
         fields = (
             'id', 'name', 'year', 'description',
-            'category', 'genre', 'rating'
+            'category', 'genre'
         )
         model = Title
 
-    def create(self, validated_data):
-        genres = validated_data.pop('genre')
-        title = Title.objects.create(**validated_data)
-        for genre in genres:
-            try:
-                current_genre = Genre.objects.get(slug=genre)
-            except Exception:
-                raise serializers.ValidationError(
-                    GENRE_DOES_NOT_EXIST.format(genre=genre)
-                )
-            TitleGenres.objects.create(
-                genre=current_genre, title=title)
-        return title
 
-    def to_representation(self, instance):
-        response = super().to_representation(instance)
-        response['category'] = CategorySerializer(instance.category).data
+class TitleSerializer(serializers.ModelSerializer):
+    """Сериализатор для модели Произведения.
+    Добавляет возможность записи новых объектов мадели Произведения
+    с заданием полей категорий и жанров по слаг этих моделей.
+    Добавляет к модели расчетное поле рейтинг: среднее значение поля
+    'оценка произведения' модели Отзывов, связанных с выбранным произведением.
+    Настраивает отображение для методов GET объекта модели Произведения
+    с выводом имени и слага для категорий и жанров.
+    """
+    category = CategorySerializer(read_only=True)
+    genre = GenreSerializer(many=True, read_only=True)
+    rating = serializers.IntegerField(read_only=True)
 
-        id_title = instance.id
-        genres = TitleGenres.objects.filter(
-            title=id_title
-        ).values_list('genre', flat=True)
-        current_title_genres = []
-        for genre_id in genres:
-            current_genre = Genre.objects.get(pk=genre_id)
-            current_genre_serialized = GenreSerializer(current_genre).data
-            current_title_genres.append(current_genre_serialized)
-        response['genre'] = current_title_genres
-        return response
-
-    def get_rating(self, obj):
-        reviews = Review.objects.filter(title=obj.pk)
-        if reviews.exists():
-            return reviews.aggregate(Avg('score'))['score__avg']
-        return None
+    class Meta:
+        fields = (
+            'id', 'name', 'year', 'description',
+            'category', 'genre', 'rating',
+        )
+        model = Title
 
 
 class ReviewSerializer(serializers.ModelSerializer):
