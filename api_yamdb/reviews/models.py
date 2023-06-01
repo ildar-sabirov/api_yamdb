@@ -4,17 +4,17 @@ from django.db import models
 from django.utils.timezone import now
 
 OUTPUT_LENGTH = 30
-
 NAME_LENGTH = 150
-
 SLUG_LENGTH = 50
-
 WRONG_YEAR_MESSAGE = 'Год издания не может быть больше текущего'
+ROLE_ADMIN = 'admin'
+ROLE_MODERATOR = 'moderator'
+ROLE_USER = 'user'
 
 ROLE_CHOICES = (
-    ('user', 'Пользователь'),
-    ('moderator', 'Модератор'),
-    ('admin', 'Администратор')
+    (ROLE_USER, 'Пользователь'),
+    (ROLE_MODERATOR, 'Модератор'),
+    (ROLE_ADMIN, 'Администратор')
 )
 
 
@@ -56,6 +56,14 @@ class User(AbstractUser):
     )
 
     USERNAME_FIELD = 'username'
+
+    @property
+    def is_admin(self):
+        return self.role == ROLE_ADMIN or self.is_staff
+
+    @property
+    def is_moderator(self):
+        return self.role == ROLE_MODERATOR
 
     class Meta:
         ordering = ['username']
