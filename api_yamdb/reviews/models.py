@@ -3,9 +3,15 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.timezone import now
 
+from .validators import validate_username
+
 OUTPUT_LENGTH = 30
 NAME_LENGTH = 150
 SLUG_LENGTH = 50
+USERNAME_LENGTH = 150
+EMAIL_LENGTH = 254
+FIRST_NAME_LENGTH = 150
+LAST_NAME_LENGTH = 150
 WRONG_YEAR_MESSAGE = 'Год издания не может быть больше текущего'
 ROLE_ADMIN = 'admin'
 ROLE_MODERATOR = 'moderator'
@@ -18,29 +24,41 @@ ROLE_CHOICES = (
 )
 
 
+def current_year():
+    return now().year
+
+
+def calculate_max_length(choices):
+    list_test = []
+    for en, ru in choices:
+        list_test.append(len(en))
+    return max(list_test)
+
+
 class User(AbstractUser):
     """
     Модель пользователя платформы.
     """
     username = models.CharField(
-        max_length=150,
+        max_length=USERNAME_LENGTH,
         unique=True,
         blank=False,
         verbose_name='Имя пользователя',
+        validators=[validate_username]
     )
     email = models.EmailField(
-        max_length=254,
+        max_length=EMAIL_LENGTH,
         unique=True,
         blank=False,
         verbose_name='Email',
     )
     first_name = models.CharField(
-        max_length=150,
+        max_length=FIRST_NAME_LENGTH,
         blank=True,
         verbose_name='Имя',
     )
     last_name = models.CharField(
-        max_length=150,
+        max_length=LAST_NAME_LENGTH,
         blank=True,
         verbose_name='Фамилия',
     )
@@ -49,9 +67,9 @@ class User(AbstractUser):
         verbose_name='Биография'
     )
     role = models.CharField(
-        max_length=15,
+        max_length=calculate_max_length(ROLE_CHOICES),
         choices=ROLE_CHOICES,
-        default='user',
+        default=ROLE_USER,
         verbose_name='Роль'
     )
 
@@ -66,7 +84,7 @@ class User(AbstractUser):
         return self.role == ROLE_MODERATOR
 
     class Meta:
-        ordering = ['username']
+        ordering = ('username',)
         verbose_name = "Пользователь"
         verbose_name_plural = "Пользователи"
 
@@ -123,9 +141,6 @@ class Title(models.Model):
     Опциональные поля: описание, категория и жанр.
     Категория у произведения может быть только одна, а жанров несколько.
     """
-    def current_year():
-        return now().year
-
     name = models.CharField(
         max_length=NAME_LENGTH,
         verbose_name='Название',

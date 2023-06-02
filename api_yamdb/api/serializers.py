@@ -5,56 +5,33 @@ from rest_framework.fields import CurrentUserDefault
 from rest_framework.generics import get_object_or_404
 from rest_framework.serializers import IntegerField
 
-from reviews.models import (
-    ROLE_CHOICES, Category, Comment, Genre, Review, Title, User,
-)
+from reviews.models import (Category, Comment, Genre, Review, Title, User)
+from reviews.validators import validate_username
 
-INVALID_USERNAME = 'Недопустимый username'
-USERNAME_IS_NOT_AVAILABLE = 'Пользователь с таким username уже существует'
-EMAIL_IS_NOT_AVAILABLE = 'Пользователь с таким email уже существует'
+EMAIL_LENGTH = 254
+USERNAME_LENGTH = 150
 GENRE_DOES_NOT_EXIST = 'Такого жанра не существует: {genre}.'
 CANNOT_ADD_MORE_THAN_ONE_COMMENT = 'Нельзя добавить больше одного комментария'
 
 
-class SignupSerializer(serializers.ModelSerializer):
+class SignupSerializer(serializers.Serializer):
     """Сериализатор для регистрации пользователя."""
-    email = serializers.EmailField(max_length=254)
-    username = serializers.RegexField(regex=r'^[\w.@+-]+$', max_length=150)
-
-    class Meta:
-        fields = ('email', 'username')
-        model = User
-
-    def validate_username(self, username):
-        if username.lower() == 'me':
-            raise serializers.ValidationError(INVALID_USERNAME)
-        if User.objects.filter(username=username).exists():
-            raise serializers.ValidationError(
-                USERNAME_IS_NOT_AVAILABLE
-            )
-        return username
-
-    def validate_email(self, email):
-        if User.objects.filter(email=email).exists():
-            raise serializers.ValidationError(
-                EMAIL_IS_NOT_AVAILABLE
-            )
-        return email
+    email = serializers.EmailField(max_length=EMAIL_LENGTH)
+    username = serializers.CharField(
+        max_length=USERNAME_LENGTH, validators=[validate_username]
+    )
 
 
-class GetTokenSerializer(serializers.ModelSerializer):
+class GetTokenSerializer(serializers.Serializer):
     """Сериализатор для получения JWT-токена."""
-    username = serializers.RegexField(regex=r'^[\w.@+-]+$', max_length=150)
+    username = serializers.CharField(
+        max_length=USERNAME_LENGTH, validators=[validate_username]
+    )
     confirmation_code = serializers.CharField()
 
-    class Meta:
-        fields = ('username', 'confirmation_code')
-        model = User
 
-
-class UserSerializer(SignupSerializer):
+class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для работы с данными пользователей"""
-    role = serializers.ChoiceField(choices=ROLE_CHOICES, required=False)
 
     class Meta:
         fields = (
