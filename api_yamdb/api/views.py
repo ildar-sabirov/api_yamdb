@@ -1,11 +1,13 @@
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.decorators import action, api_view
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -13,7 +15,8 @@ from .filters import TitleFilter
 from .permissions import IsAdmin, IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer, GetTokenSerializer,
-    ReviewSerializer, SignupSerializer, TitleSerializer, UserSerializer,
+    ReviewSerializer, SignupSerializer, TitlePostSerializer, TitleSerializer,
+    UserSerializer,
 )
 from reviews.models import Category, Genre, Review, Title, User
 
@@ -116,13 +119,21 @@ class TitleViewSet(viewsets.ModelViewSet):
     Настроена пагинация и фильтрация по полям: слаг категории, слаг жанра,
     название произведения и год издания.
     """
-    queryset = Title.objects.all()
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
     pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
+
+    def get_queryset(self):
+        queryset = Title.objects.annotate(rating=Avg('reviews__score')).all()
+        return queryset.order_by('name')
+
+    def get_serializer_class(self):
+        if self.request.method not in SAFE_METHODS:
+            return TitlePostSerializer
+        return TitleSerializer
 
 
 class CategoryViewSet(CategoryGenreViewSet):
