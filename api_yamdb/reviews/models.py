@@ -18,6 +18,13 @@ ROLE_CHOICES = (
 )
 
 
+def calculate_max_length(choices):
+    list_test = []
+    for en, ru in choices:
+        list_test.append(len(en))
+    return max(list_test)
+
+
 class User(AbstractUser):
     """
     Модель пользователя платформы.
@@ -49,7 +56,7 @@ class User(AbstractUser):
         verbose_name='Биография'
     )
     role = models.CharField(
-        max_length=15,
+        max_length=calculate_max_length(ROLE_CHOICES),
         choices=ROLE_CHOICES,
         default='user',
         verbose_name='Роль'
