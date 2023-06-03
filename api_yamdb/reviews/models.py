@@ -6,7 +6,7 @@ from django.utils.timezone import now
 from .validators import validate_username
 
 OUTPUT_LENGTH = 30
-NAME_LENGTH = 150
+NAME_LENGTH = 256
 SLUG_LENGTH = 50
 USERNAME_LENGTH = 150
 EMAIL_LENGTH = 254
