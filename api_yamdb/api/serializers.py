@@ -4,6 +4,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
 from rest_framework.generics import get_object_or_404
 from rest_framework.serializers import IntegerField
+from rest_framework.permissions import SAFE_METHODS
 
 from reviews.models import (Category, Comment, Genre, Review, Title, User)
 from reviews.validators import validate_username
@@ -109,33 +110,33 @@ class TitleSerializer(serializers.ModelSerializer):
 class ReviewSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
         default=CurrentUserDefault(),
-        slug_field="username", read_only=True
+        slug_field='username', read_only=True
     )
     score = IntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(10)]
     )
 
     def validate(self, data):
-        request = self.context["request"]
-        if request.method == "POST":
+        request = self.context['request']
+        if request.method in SAFE_METHODS:
+            return data
+        if request.method == 'POST':
             author = request.user
-            title_id = self.context["view"].kwargs.get("title_id")
+            title_id = self.context['view'].kwargs.get('title_id')
             title = get_object_or_404(Title, pk=title_id)
             if Review.objects.filter(title=title, author=author).exists():
                 raise ValidationError(CANNOT_ADD_MORE_THAN_ONE_COMMENT)
         return data
 
     class Meta:
-        fields = ("id", "text", "author", "score", "pub_date", "title")
+        fields = ('id', 'text', 'author', 'score', 'pub_date')
         model = Review
-        read_only_fields = ("title",)
 
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(read_only=True,
-                                          slug_field="username")
+                                          slug_field='username')
 
     class Meta:
-        fields = ("id", "text", "author", "pub_date")
+        fields = ('id', 'text', 'author', 'pub_date')
         model = Comment
-        read_only_fields = ("review",)

@@ -194,71 +194,70 @@ class TitleGenres(models.Model):
         return f'{self.title}_{self.genre}'
 
 
-class ReviewCommentModel(models.Model):
+class BaseSettingModel(models.Model):
     """Модель для задания общих настроек к моделям Отзыв и Комментарий."""
-    text = models.TextField("Текст")
+    text = models.TextField('Текст')
     author = models.ForeignKey(
         User,
-        verbose_name="Автор",
+        verbose_name='Автор',
         on_delete=models.CASCADE,
     )
     pub_date = models.DateTimeField(
-        "Дата добавления",
+        'Дата добавления',
         auto_now_add=True,
         db_index=True,
     )
 
     class Meta:
         abstract = True
-        ordering = ("-pub_date",)
+        ordering = ('-pub_date',)
+        default_related_name = '%(class)ss'
 
     def __str__(self):
         return self.text[:OUTPUT_LENGTH]
 
 
-class Review(ReviewCommentModel):
+class Review(BaseSettingModel):
     """Модель Отзыв.
     Содержит данные о произведении, оценке, основной текс и автор отзыва,
     дата публикации отзыва.
     Настроена проверка значения оценки от 1 до 10.
     """
     title = models.ForeignKey(
-        Title, verbose_name="Произведение", on_delete=models.CASCADE
+        Title, verbose_name='Произведение', on_delete=models.CASCADE
     )
     score = models.SmallIntegerField(
-        "Оценка произведения",
+        'Оценка произведения',
         validators=[
             MinValueValidator(
-                1, message="Оценка должна быть больше или равна 1"
+                1, message='Оценка должна быть больше или равна 1'
             ),
             MaxValueValidator(
-                10, message="Оценка должна быть меньше или равна 10"
+                10, message='Оценка должна быть меньше или равна 10'
             ),
         ],
         default=1,
     )
 
-    class Meta(ReviewCommentModel.Meta):
-        verbose_name = "Отзыв"
-        verbose_name_plural = "Отзывы"
-        default_related_name = "reviews"
+    class Meta(BaseSettingModel.Meta):
+        verbose_name = 'Отзыв'
+        verbose_name_plural = 'Отзывы'
         constraints = [
             models.UniqueConstraint(
-                fields=("title", "author"), name="unique_review"
+                fields=('title', 'author'), name='unique_review'
             ),
         ]
 
 
-class Comment(ReviewCommentModel):
+class Comment(BaseSettingModel):
     """Модель Комментарий.
     Содержит данные об отзыве на произведение, основной текс и автор
     комментария, дата публикации комментария.
     """
     review = models.ForeignKey(
-        Review, verbose_name="Отзыв", on_delete=models.CASCADE
+        Review, verbose_name='Отзыв', on_delete=models.CASCADE
     )
 
-    class Meta(ReviewCommentModel.Meta):
-        verbose_name = "Комментарий"
-        verbose_name_plural = "Комментарии"
-        default_related_name = "comments"
+    class Meta(BaseSettingModel.Meta):
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
