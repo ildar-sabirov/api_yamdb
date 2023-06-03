@@ -16,6 +16,11 @@ WRONG_YEAR_MESSAGE = 'Год издания не может быть больш�
 ROLE_ADMIN = 'admin'
 ROLE_MODERATOR = 'moderator'
 ROLE_USER = 'user'
+SCORE_MIN_VALUE = 1
+SCORE_MAX_VALUE = 10
+WRONG_MIN_SCORE_MESSAGE = 'Оценка должна быть больше или равна 1'
+WRONG_MAX_SCORE_MESSAGE = 'Оценка должна быть меньше или равна 10'
+
 
 ROLE_CHOICES = (
     (ROLE_USER, 'Пользователь'),
@@ -194,7 +199,7 @@ class TitleGenres(models.Model):
         return f'{self.title}_{self.genre}'
 
 
-class BaseSettingModel(models.Model):
+class TextAuthorPubdateModel(models.Model):
     """Модель для задания общих настроек к моделям Отзыв и Комментарий."""
     text = models.TextField('Текст')
     author = models.ForeignKey(
@@ -217,7 +222,7 @@ class BaseSettingModel(models.Model):
         return self.text[:OUTPUT_LENGTH]
 
 
-class Review(BaseSettingModel):
+class Review(TextAuthorPubdateModel):
     """Модель Отзыв.
     Содержит данные о произведении, оценке, основной текс и автор отзыва,
     дата публикации отзыва.
@@ -230,16 +235,16 @@ class Review(BaseSettingModel):
         'Оценка произведения',
         validators=[
             MinValueValidator(
-                1, message='Оценка должна быть больше или равна 1'
+                SCORE_MIN_VALUE, message=WRONG_MIN_SCORE_MESSAGE
             ),
             MaxValueValidator(
-                10, message='Оценка должна быть меньше или равна 10'
+                SCORE_MAX_VALUE, message=WRONG_MAX_SCORE_MESSAGE
             ),
         ],
         default=1,
     )
 
-    class Meta(BaseSettingModel.Meta):
+    class Meta(TextAuthorPubdateModel.Meta):
         verbose_name = 'Отзыв'
         verbose_name_plural = 'Отзывы'
         constraints = [
@@ -249,7 +254,7 @@ class Review(BaseSettingModel):
         ]
 
 
-class Comment(BaseSettingModel):
+class Comment(TextAuthorPubdateModel):
     """Модель Комментарий.
     Содержит данные об отзыве на произведение, основной текс и автор
     комментария, дата публикации комментария.
@@ -258,6 +263,6 @@ class Comment(BaseSettingModel):
         Review, verbose_name='Отзыв', on_delete=models.CASCADE
     )
 
-    class Meta(BaseSettingModel.Meta):
+    class Meta(TextAuthorPubdateModel.Meta):
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
