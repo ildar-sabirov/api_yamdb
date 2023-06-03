@@ -17,20 +17,6 @@ class IsAdminOrAuthorOrReadOnly(BasePermission):
         )
 
 
-class IsAdminOrReadOnly(BasePermission):
-    """Для администратора и суперюзера иначе только просмотр."""
-
-    def has_permission(self, request, view):
-        if request.method in SAFE_METHODS:
-            return True
-        else:
-            if request.user.is_authenticated:
-                return (
-                    request.user.is_admin
-                )
-        return False
-
-
 class IsAdmin(BasePermission):
     """Для аутентифицированных пользователей имеющих статус администратора."""
 
@@ -39,3 +25,12 @@ class IsAdmin(BasePermission):
             request.user.is_authenticated
             and request.user.is_admin
         )
+
+
+class IsAdminOrReadOnly(IsAdmin):
+    """Для администратора и суперюзера иначе только просмотр."""
+
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        return super().has_permission(request, view)

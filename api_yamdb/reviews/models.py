@@ -105,7 +105,7 @@ class NameSlug(models.Model):
     )
 
     def __str__(self):
-        return self.slug
+        return f'{self.slug[:OUTPUT_LENGTH]} {type(self)}'
 
     class Meta:
         abstract = True
@@ -147,7 +147,7 @@ class Title(models.Model):
     )
     year = models.PositiveIntegerField(
         validators=[MaxValueValidator(
-            current_year(),
+            current_year,
             message=WRONG_YEAR_MESSAGE
         )],
         verbose_name='Год издания',
