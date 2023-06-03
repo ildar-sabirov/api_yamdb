@@ -4,9 +4,9 @@ from django.db import IntegrityError
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import mixins, permissions, status, viewsets, serializers
+from rest_framework import mixins, permissions, serializers, status, viewsets
 from rest_framework.decorators import action, api_view
-from rest_framework.filters import SearchFilter, OrderingFilter
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
@@ -17,7 +17,7 @@ from .permissions import IsAdmin, IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer, GetTokenSerializer,
     ReviewSerializer, SignupSerializer, TitlePostSerializer, TitleSerializer,
-    UserSerializer
+    UserSerializer,
 )
 from reviews.models import Category, Genre, Review, Title, User
 
