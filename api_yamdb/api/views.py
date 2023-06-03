@@ -1,45 +1,54 @@
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db import IntegrityError
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, status, viewsets
+from rest_framework import mixins, permissions, status, viewsets, serializers
 from rest_framework.decorators import action, api_view
 from rest_framework.filters import SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from reviews.models import Category, Genre, Review, Title, User
 from .filters import TitleFilter
-from .mixins import CreateListDestroyViewSet
 from .permissions import IsAdmin, IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
-from .serializers import (CategorySerializer, CommentSerializer,
-                          GenreSerializer, GetTokenSerializer,
-                          ReviewSerializer, SignupSerializer, TitleSerializer,
-                          UserSerializer)
+from .serializers import (
+    CategorySerializer, CommentSerializer, GenreSerializer, GetTokenSerializer,
+    ReviewSerializer, SignupSerializer, TitlePostSerializer, TitleSerializer,
+    UserSerializer
+)
+from reviews.models import Category, Genre, Review, Title, User
+
+USERNAME_OR_EMAIL_UNAVAILABLE = (
+    'Пользователь с таким username или email уже существует.'
+)
+SUBJECT_LINE = 'Confirmation code'
+EMAIL_TEXT = 'Код подтверждения для получения токена: {confirmation_code}'
+FROM_EMAIL = 'from@example.com'
 
 
 @api_view(['POST'])
 def signup_view(request):
     """Регистрация пользователя и отправка кода подтверждения по почте."""
-    if not User.objects.filter(
-        username=request.data.get('username'), email=request.data.get('email')
-    ).exists():
-        serializer = SignupSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        username = serializer.data.get('username')
-        email = serializer.data.get('email')
-        user = User.objects.create(username=username, email=email)
-        confirmation_code = default_token_generator.make_token(user)
-        send_mail(
-            'Confirmation code',
-            f'Код подтверждения для получения токена: {confirmation_code}',
-            'from@example.com',
-            [serializer.data.get('email')],
-            fail_silently=False,
-        )
-        return Response(serializer.data, status=status.HTTP_200_OK)
-    return Response(request.data, status=status.HTTP_200_OK)
+    serializer = SignupSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    username = serializer.data.get('username')
+    email = serializer.data.get('email')
+    try:
+        user, _ = User.objects.get_or_create(username=username, email=email)
+    except IntegrityError:
+        raise serializers.ValidationError(USERNAME_OR_EMAIL_UNAVAILABLE)
+    confirmation_code = default_token_generator.make_token(user)
+    send_mail(
+        SUBJECT_LINE,
+        EMAIL_TEXT.format(confirmation_code=confirmation_code),
+        FROM_EMAIL,
+        [serializer.data.get('email')],
+        fail_silently=False,
+    )
+    return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 @api_view(['POST'])
@@ -70,7 +79,7 @@ class UserViewSet(viewsets.ModelViewSet):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = (IsAdmin, permissions.IsAuthenticated)
+    permission_classes = (IsAdmin,)
     lookup_field = 'username'
     filter_backends = (SearchFilter, )
     search_fields = ('username', )
@@ -92,6 +101,23 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class CategoryGenreViewSet(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    mixins.DestroyModelMixin,
+    viewsets.GenericViewSet
+):
+    """Ограничение доступных методов для запросов http (GET, POST, DELETE).
+    Добавляет настройки доступа - для Администраторов или только на чтение,
+    а так же возможность поиска по полю 'имя'
+    """
+    permission_classes = (IsAdminOrReadOnly,)
+    pagination_class = PageNumberPagination
+    filter_backends = (SearchFilter,)
+    search_fields = ('name',)
+    lookup_field = 'slug'
+
+
 class TitleViewSet(viewsets.ModelViewSet):
     """Просмотр произведений.
     Доступны просмотр списка всех объектов без токена,
@@ -100,7 +126,6 @@ class TitleViewSet(viewsets.ModelViewSet):
     Настроена пагинация и фильтрация по полям: слаг категории, слаг жанра,
     название произведения и год издания.
     """
-    queryset = Title.objects.all()
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
     pagination_class = PageNumberPagination
@@ -108,8 +133,17 @@ class TitleViewSet(viewsets.ModelViewSet):
     filterset_class = TitleFilter
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
+    def get_queryset(self):
+        queryset = Title.objects.annotate(rating=Avg('reviews__score')).all()
+        return queryset.order_by('name')
 
-class CategoryViewSet(CreateListDestroyViewSet):
+    def get_serializer_class(self):
+        if self.request.method not in SAFE_METHODS:
+            return TitlePostSerializer
+        return TitleSerializer
+
+
+class CategoryViewSet(CategoryGenreViewSet):
     """Просмотр категорий.
     Доступны просмотр списка всех объектов без токена,
     добавление и удаление только для администратора и суперюзера.
@@ -117,10 +151,9 @@ class CategoryViewSet(CreateListDestroyViewSet):
     """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
 
 
-class GenreViewSet(CreateListDestroyViewSet):
+class GenreViewSet(CategoryGenreViewSet):
     """Просмотр жанров.
     Доступны просмотр списка всех объектов без токена,
     добавление и удаление только для администратора и суперюзера.
@@ -128,7 +161,6 @@ class GenreViewSet(CreateListDestroyViewSet):
     """
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    lookup_field = 'slug'
 
 
 class ReviewViewSet(viewsets.ModelViewSet):

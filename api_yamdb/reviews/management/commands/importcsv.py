@@ -27,7 +27,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        with open(TABLE_PATH['Genre']) as file:
+        with open(TABLE_PATH['Genre'], encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
             Genre.objects.all().delete()
@@ -39,7 +39,7 @@ class Command(BaseCommand):
                 genre.save()
         self.sucsess_import_message('Жанры')
 
-        with open(TABLE_PATH['Category']) as file:
+        with open(TABLE_PATH['Category'], encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
             Category.objects.all().delete()
@@ -51,7 +51,7 @@ class Command(BaseCommand):
                 category.save()
         self.sucsess_import_message('Категории')
 
-        with open(TABLE_PATH['Title']) as file:
+        with open(TABLE_PATH['Title'], encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
             Title.objects.all().delete()
@@ -65,7 +65,7 @@ class Command(BaseCommand):
                 title.save()
         self.sucsess_import_message('Произведения')
 
-        with open(TABLE_PATH['TitleGenres']) as file:
+        with open(TABLE_PATH['TitleGenres'], encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
             TitleGenres.objects.all().delete()
@@ -79,7 +79,7 @@ class Command(BaseCommand):
                 title_genre.save()
         self.sucsess_import_message('Произведения-Жанры')
 
-        with open(TABLE_PATH['User']) as file:
+        with open(TABLE_PATH['User'], encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
             User.objects.all().delete()
@@ -95,7 +95,7 @@ class Command(BaseCommand):
                 user.save()
         self.sucsess_import_message('Пользователи')
 
-        with open(TABLE_PATH['Review']) as file:
+        with open(TABLE_PATH['Review'], encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
             Review.objects.all().delete()
@@ -112,7 +112,7 @@ class Command(BaseCommand):
                 review.save()
         self.sucsess_import_message('Отзывы')
 
-        with open(TABLE_PATH['Comment']) as file:
+        with open(TABLE_PATH['Comment'], encoding='utf-8') as file:
             reader = csv.reader(file)
             next(reader)
             Comment.objects.all().delete()
