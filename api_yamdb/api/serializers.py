@@ -7,13 +7,12 @@ from rest_framework.serializers import IntegerField
 
 from reviews.models import (Category, Comment, Genre, Review, Title, User)
 from reviews.validators import validate_username
+from reviews.models import SCORE_MIN_VALUE, SCORE_MAX_VALUE
 
 EMAIL_LENGTH = 254
 USERNAME_LENGTH = 150
 GENRE_DOES_NOT_EXIST = 'Такого жанра не существует: {genre}.'
 CANNOT_ADD_MORE_THAN_ONE_COMMENT = 'Нельзя добавить больше одного комментария'
-SCORE_MIN_VALUE = 1
-SCORE_MAX_VALUE = 10
 
 
 class SignupSerializer(serializers.Serializer):
