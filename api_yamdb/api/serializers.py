@@ -99,16 +99,16 @@ class TitleSerializer(serializers.ModelSerializer):
     Настраивает отображение для методов GET объекта модели Произведения
     с выводом имени и слага для категорий и жанров.
     """
-    category = CategorySerializer(read_only=True)
-    genre = GenreSerializer(many=True, read_only=True)
-    rating = serializers.IntegerField(read_only=True)
+    category = CategorySerializer()
+    genre = GenreSerializer(many=True)
+    rating = serializers.IntegerField()
 
     class Meta:
         fields = (
             'id', 'name', 'year', 'description',
             'category', 'genre', 'rating',
         )
-        read_only_fields = ('id', 'name', 'year', 'description')
+        read_only_fields = fields
         model = Title
 
 
