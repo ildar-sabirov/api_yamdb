@@ -40,9 +40,9 @@ def signup_view(request):
     try:
         user, _ = User.objects.get_or_create(username=username, email=email)
     except IntegrityError:
-        field_name = "username" if User.objects.filter(
+        field_name = 'username' if User.objects.filter(
             username=username
-        ).exists() else "email"
+        ).exists() else 'email'
         raise serializers.ValidationError(
             USERNAME_OR_EMAIL_UNAVAILABLE.format(field_name=field_name)
         )
