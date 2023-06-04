@@ -4,7 +4,6 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
 from rest_framework.generics import get_object_or_404
 from rest_framework.serializers import IntegerField
-from rest_framework.permissions import SAFE_METHODS
 
 from reviews.models import (Category, Comment, Genre, Review, Title, User)
 from reviews.validators import validate_username
@@ -13,6 +12,8 @@ EMAIL_LENGTH = 254
 USERNAME_LENGTH = 150
 GENRE_DOES_NOT_EXIST = 'Такого жанра не существует: {genre}.'
 CANNOT_ADD_MORE_THAN_ONE_COMMENT = 'Нельзя добавить больше одного комментария'
+SCORE_MIN_VALUE = 1
+SCORE_MAX_VALUE = 10
 
 
 class SignupSerializer(serializers.Serializer):
@@ -114,19 +115,19 @@ class ReviewSerializer(serializers.ModelSerializer):
         slug_field='username', read_only=True
     )
     score = IntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
+        validators=[MinValueValidator(SCORE_MIN_VALUE),
+                    MaxValueValidator(SCORE_MAX_VALUE)]
     )
 
     def validate(self, data):
         request = self.context['request']
-        if request.method in SAFE_METHODS:
+        if request.method != 'POST':
             return data
-        if request.method == 'POST':
-            author = request.user
-            title_id = self.context['view'].kwargs.get('title_id')
-            title = get_object_or_404(Title, pk=title_id)
-            if Review.objects.filter(title=title, author=author).exists():
-                raise ValidationError(CANNOT_ADD_MORE_THAN_ONE_COMMENT)
+        author = request.user
+        title_id = self.context['view'].kwargs.get('title_id')
+        title = get_object_or_404(Title, pk=title_id)
+        if Review.objects.filter(title=title, author=author).exists():
+            raise ValidationError(CANNOT_ADD_MORE_THAN_ONE_COMMENT)
         return data
 
     class Meta:
