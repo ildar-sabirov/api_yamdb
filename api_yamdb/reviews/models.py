@@ -18,8 +18,10 @@ ROLE_MODERATOR = 'moderator'
 ROLE_USER = 'user'
 SCORE_MIN_VALUE = 1
 SCORE_MAX_VALUE = 10
-WRONG_MIN_SCORE_MESSAGE = 'Оценка должна быть больше или равна 1'
-WRONG_MAX_SCORE_MESSAGE = 'Оценка должна быть меньше или равна 10'
+WRONG_MIN_SCORE_MESSAGE = (f'Оценка должна быть больше или равна '
+                           f'{SCORE_MIN_VALUE}')
+WRONG_MAX_SCORE_MESSAGE = (f'Оценка должна быть меньше или равна '
+                           f'{SCORE_MAX_VALUE}')
 
 
 ROLE_CHOICES = (
