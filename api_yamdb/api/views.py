@@ -5,7 +5,7 @@ from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, permissions, serializers, status, viewsets
-from rest_framework.decorators import action, api_view
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import SAFE_METHODS
@@ -19,17 +19,18 @@ from .serializers import (
     ReviewSerializer, SignupSerializer, TitlePostSerializer, TitleSerializer,
     UserSerializer,
 )
+from api_yamdb.settings import FROM_EMAIL
 from reviews.models import Category, Genre, Review, Title, User
 
 USERNAME_OR_EMAIL_UNAVAILABLE = (
-    'Пользователь с таким username или email уже существует.'
+    'Пользователь с таким {field_name} уже существует.'
 )
 SUBJECT_LINE = 'Confirmation code'
 EMAIL_TEXT = 'Код подтверждения для получения токена: {confirmation_code}'
-FROM_EMAIL = 'from@example.com'
 
 
 @api_view(['POST'])
+@permission_classes((permissions.AllowAny,))
 def signup_view(request):
     """Регистрация пользователя и отправка кода подтверждения по почте."""
     serializer = SignupSerializer(data=request.data)
@@ -38,8 +39,11 @@ def signup_view(request):
     email = serializer.data.get('email')
     try:
         user, _ = User.objects.get_or_create(username=username, email=email)
-    except IntegrityError:
-        raise serializers.ValidationError(USERNAME_OR_EMAIL_UNAVAILABLE)
+    except IntegrityError as error:
+        field_name = error.args[0].split('.')[1]
+        raise serializers.ValidationError(
+            USERNAME_OR_EMAIL_UNAVAILABLE.format(field_name=field_name)
+        )
     confirmation_code = default_token_generator.make_token(user)
     send_mail(
         SUBJECT_LINE,
@@ -52,6 +56,7 @@ def signup_view(request):
 
 
 @api_view(['POST'])
+@permission_classes((permissions.AllowAny,))
 def get_token(request):
     """Получение токена по имени пользователя и коду подтверждения."""
     serializer = GetTokenSerializer(data=request.data)
@@ -86,10 +91,10 @@ class UserViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
     @action(
-        detail=False, methods=['get', 'patch'],
+        detail=False, methods=['get', 'patch'], url_path='me',
         permission_classes=(permissions.IsAuthenticated,)
     )
-    def me(self, request):
+    def owner_profile(self, request):
         user = request.user
         serializer = UserSerializer(request.user)
         if request.method == 'PATCH':
