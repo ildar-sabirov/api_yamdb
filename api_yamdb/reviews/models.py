@@ -33,13 +33,6 @@ def current_year():
     return now().year
 
 
-def calculate_max_length(choices):
-    list_test = []
-    for en, ru in choices:
-        list_test.append(len(en))
-    return max(list_test)
-
-
 class User(AbstractUser):
     """
     Модель пользователя платформы.
@@ -72,7 +65,7 @@ class User(AbstractUser):
         verbose_name='Биография'
     )
     role = models.CharField(
-        max_length=calculate_max_length(ROLE_CHOICES),
+        max_length=max(len(en) for en, ru in ROLE_CHOICES),
         choices=ROLE_CHOICES,
         default=ROLE_USER,
         verbose_name='Роль'
