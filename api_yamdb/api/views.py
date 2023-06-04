@@ -4,9 +4,9 @@ from django.db import IntegrityError
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import mixins, permissions, status, viewsets, serializers
-from rest_framework.decorators import action, api_view
-from rest_framework.filters import SearchFilter
+from rest_framework import mixins, permissions, serializers, status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
@@ -17,19 +17,20 @@ from .permissions import IsAdmin, IsAdminOrAuthorOrReadOnly, IsAdminOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer, GetTokenSerializer,
     ReviewSerializer, SignupSerializer, TitlePostSerializer, TitleSerializer,
-    UserSerializer
+    UserSerializer,
 )
+from api_yamdb.settings import FROM_EMAIL
 from reviews.models import Category, Genre, Review, Title, User
 
 USERNAME_OR_EMAIL_UNAVAILABLE = (
-    'Пользователь с таким username или email уже существует.'
+    'Пользователь с таким {field_name} уже существует.'
 )
 SUBJECT_LINE = 'Confirmation code'
 EMAIL_TEXT = 'Код подтверждения для получения токена: {confirmation_code}'
-FROM_EMAIL = 'from@example.com'
 
 
 @api_view(['POST'])
+@permission_classes((permissions.AllowAny,))
 def signup_view(request):
     """Регистрация пользователя и отправка кода подтверждения по почте."""
     serializer = SignupSerializer(data=request.data)
@@ -38,8 +39,11 @@ def signup_view(request):
     email = serializer.data.get('email')
     try:
         user, _ = User.objects.get_or_create(username=username, email=email)
-    except IntegrityError:
-        raise serializers.ValidationError(USERNAME_OR_EMAIL_UNAVAILABLE)
+    except IntegrityError as error:
+        field_name = error.args[0].split('.')[1]
+        raise serializers.ValidationError(
+            USERNAME_OR_EMAIL_UNAVAILABLE.format(field_name=field_name)
+        )
     confirmation_code = default_token_generator.make_token(user)
     send_mail(
         SUBJECT_LINE,
@@ -52,6 +56,7 @@ def signup_view(request):
 
 
 @api_view(['POST'])
+@permission_classes((permissions.AllowAny,))
 def get_token(request):
     """Получение токена по имени пользователя и коду подтверждения."""
     serializer = GetTokenSerializer(data=request.data)
@@ -86,10 +91,10 @@ class UserViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
 
     @action(
-        detail=False, methods=['get', 'patch'],
+        detail=False, methods=['get', 'patch'], url_path='me',
         permission_classes=(permissions.IsAuthenticated,)
     )
-    def me(self, request):
+    def owner_profile(self, request):
         user = request.user
         serializer = UserSerializer(request.user)
         if request.method == 'PATCH':
@@ -126,16 +131,14 @@ class TitleViewSet(viewsets.ModelViewSet):
     Настроена пагинация и фильтрация по полям: слаг категории, слаг жанра,
     название произведения и год издания.
     """
+    queryset = Title.objects.annotate(rating=Avg('reviews__score')).all()
     serializer_class = TitleSerializer
     permission_classes = (IsAdminOrReadOnly,)
     pagination_class = PageNumberPagination
-    filter_backends = (DjangoFilterBackend,)
+    filter_backends = (DjangoFilterBackend, OrderingFilter)
+    ordering = ('name',)
     filterset_class = TitleFilter
     http_method_names = ['get', 'post', 'head', 'patch', 'delete']
-
-    def get_queryset(self):
-        queryset = Title.objects.annotate(rating=Avg('reviews__score')).all()
-        return queryset.order_by('name')
 
     def get_serializer_class(self):
         if self.request.method not in SAFE_METHODS:
@@ -168,10 +171,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminOrAuthorOrReadOnly,)
 
     def get_title(self):
-        return get_object_or_404(Title, id=self.kwargs.get("title_id"))
+        return get_object_or_404(Title, id=self.kwargs.get('title_id'))
 
     def get_queryset(self):
-        return self.get_title().reviews.select_related("author")
+        return self.get_title().reviews.select_related('author')
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user, title=self.get_title())
@@ -182,10 +185,10 @@ class CommentViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAdminOrAuthorOrReadOnly,)
 
     def get_review(self):
-        return get_object_or_404(Review, id=self.kwargs.get("review_id"))
+        return get_object_or_404(Review, id=self.kwargs.get('review_id'))
 
     def get_queryset(self):
-        return self.get_review().comments.select_related("author")
+        return self.get_review().comments.select_related('author')
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user, review=self.get_review())

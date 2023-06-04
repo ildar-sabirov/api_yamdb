@@ -3,16 +3,15 @@ import re
 from django.core.exceptions import ValidationError
 
 INVALID_USERNAME = 'Недопустимо использовать имя пользователя: {username}'
-INCORRECT_USERNAME = ('Имя пользователя содержит недопустимые символы: '
-                      '{invalid_chars}')
+INCORRECT_USERNAME = 'Имя пользователя содержит недопустимые символы'
 
 
 def validate_username(username):
-    if username.lower() == 'me':
+    if username == 'me':
         raise ValidationError(INVALID_USERNAME.format(username=username))
-    invalid_chars = re.findall(r'[^\w.@+-]', username)
-    if invalid_chars:
+    invalid_matches = list(set(re.findall(r'[^\w.@+-]', username)))
+    if invalid_matches:
         raise ValidationError(
-            INCORRECT_USERNAME.format(invalid_chars=', '.join(invalid_chars))
+            f'{INCORRECT_USERNAME}: {"".join(invalid_matches)}'
         )
     return username

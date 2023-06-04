@@ -4,10 +4,10 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.fields import CurrentUserDefault
 from rest_framework.generics import get_object_or_404
 from rest_framework.serializers import IntegerField
-from rest_framework.permissions import SAFE_METHODS
 
-from reviews.models import (Category, Comment, Genre, Review, Title, User)
+from reviews.models import Category, Comment, Genre, Review, Title, User
 from reviews.validators import validate_username
+from reviews.models import SCORE_MIN_VALUE, SCORE_MAX_VALUE
 
 EMAIL_LENGTH = 254
 USERNAME_LENGTH = 150
@@ -17,18 +17,22 @@ CANNOT_ADD_MORE_THAN_ONE_COMMENT = 'Нельзя добавить больше �
 
 class SignupSerializer(serializers.Serializer):
     """Сериализатор для регистрации пользователя."""
-    email = serializers.EmailField(max_length=EMAIL_LENGTH)
+    email = serializers.EmailField(max_length=EMAIL_LENGTH, required=True)
     username = serializers.CharField(
-        max_length=USERNAME_LENGTH, validators=[validate_username]
+        max_length=USERNAME_LENGTH,
+        validators=[validate_username],
+        required=True
     )
 
 
 class GetTokenSerializer(serializers.Serializer):
     """Сериализатор для получения JWT-токена."""
     username = serializers.CharField(
-        max_length=USERNAME_LENGTH, validators=[validate_username]
+        max_length=USERNAME_LENGTH,
+        validators=[validate_username],
+        required=True
     )
-    confirmation_code = serializers.CharField()
+    confirmation_code = serializers.CharField(required=True)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -104,6 +108,7 @@ class TitleSerializer(serializers.ModelSerializer):
             'id', 'name', 'year', 'description',
             'category', 'genre', 'rating',
         )
+        read_only_fields = ('id', 'name', 'year', 'description')
         model = Title
 
 
@@ -113,19 +118,19 @@ class ReviewSerializer(serializers.ModelSerializer):
         slug_field='username', read_only=True
     )
     score = IntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(10)]
+        validators=[MinValueValidator(SCORE_MIN_VALUE),
+                    MaxValueValidator(SCORE_MAX_VALUE)]
     )
 
     def validate(self, data):
         request = self.context['request']
-        if request.method in SAFE_METHODS:
+        if request.method != 'POST':
             return data
-        if request.method == 'POST':
-            author = request.user
-            title_id = self.context['view'].kwargs.get('title_id')
-            title = get_object_or_404(Title, pk=title_id)
-            if Review.objects.filter(title=title, author=author).exists():
-                raise ValidationError(CANNOT_ADD_MORE_THAN_ONE_COMMENT)
+        author = request.user
+        title_id = self.context['view'].kwargs.get('title_id')
+        title = get_object_or_404(Title, pk=title_id)
+        if Review.objects.filter(title=title, author=author).exists():
+            raise ValidationError(CANNOT_ADD_MORE_THAN_ONE_COMMENT)
         return data
 
     class Meta:
